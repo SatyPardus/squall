@@ -12,8 +12,8 @@
 #define STORM_LOG_FLAG_NO_FILE   2 // Don't use log file (use OutputDebugString or console only)
 #define STORM_LOG_FLAG_APPEND    4 // Don't truncate existing log file
 
-DECLARE_STRICT_HANDLE(HSLOG);
-DECLARE_STRICT_HANDLE(HLOCKEDLOG);
+DECLARE_STORM_STRICT_HANDLE(HSLOG);
+DECLARE_STORM_STRICT_HANDLE(HLOCKEDLOG);
 
 void SLogInitialize();
 int32_t SLogIsInitialized();

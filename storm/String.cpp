@@ -7,7 +7,6 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
-#include <algorithm>
 
 #if defined(WHOA_SYSTEM_WIN)
 #include <string.h>
@@ -50,6 +49,20 @@ uint32_t offsetsFromUTF8[8] = {
 int32_t s_initialized;
 
 double s_realDigit[20][10];
+
+const uint32_t s_hashtable[16] = {
+    0x486E26EE, 0xDCAA16B3, 0xE1918EEF, 0x202DAFDB,
+    0x341C7DC7, 0x1C365303, 0x40EF2D37, 0x65FD5E49,
+    0xD6057177, 0x904ECE93, 0x1C38024F, 0x98FD323B,
+    0xE3061AE7, 0xA39B0FA1, 0x9797F25F, 0xE4444563,
+};
+
+const uint64_t s_hashtable64[16] = {
+    0x486E26EEDCAA16B3ULL, 0xE1918EEF202DAFDBULL, 0x341C7DC71C365303ULL, 0x40EF2D3765FD5E49ULL,
+    0xD6057177904ECE93ULL, 0x1C38024F98FD323BULL, 0xE3061AE7A39B0FA1ULL, 0x9797F25FE4444563ULL,
+    0xCD2EC20C8DC1B898ULL, 0x31759633799A306DULL, 0x8C2063852E6E9627ULL, 0x79237D9973922C66ULL,
+    0x8728628D28628824ULL, 0x8F1F7E9625887795ULL, 0x296E3281389C0D60ULL, 0x6F4893CA61636542ULL,
+};
 
 void GetNextTextUpper(uint32_t* orig, const char** string, uint32_t* upper) {
     uint8_t byte = **string;
@@ -177,7 +190,7 @@ void InitializeFloatDigits() {
     }
 }
 
-size_t ISStrVPrintf(const char* format, va_list va, char* dest, size_t maxchars) {
+size_t ISStrVPrintf(char* dest, size_t maxchars, const char* format, va_list va) {
     if (!maxchars) {
         return 0;
     }
@@ -200,14 +213,14 @@ size_t ISStrVPrintf(const char* format, va_list va, char* dest, size_t maxchars)
     return result;
 }
 
-void SStrInitialize() {
+void STORMAPI SStrInitialize() {
     if (!s_initialized) {
         InitializeFloatDigits();
         s_initialized = 1;
     }
 }
 
-char* SStrChr(char* string, char search) {
+char* STORMAPI SStrChr(char* string, char search) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -227,7 +240,7 @@ char* SStrChr(char* string, char search) {
     return string;
 }
 
-const char* SStrChr(const char* string, char search) {
+const char* STORMAPI SStrChr(const char* string, char search) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -247,7 +260,20 @@ const char* SStrChr(const char* string, char search) {
     return string;
 }
 
-char* SStrChrR(char* string, char search) {
+const char* STORMAPI SStrChrBidir(const char* string, char search, int32_t reverse) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE_END;
+
+    if (reverse) {
+        return SStrChrR(string, search);
+    }
+    else {
+        return SStrChr(string, search);
+    }
+}
+
+char* STORMAPI SStrChrR(char* string, char search) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -263,7 +289,7 @@ char* SStrChrR(char* string, char search) {
     return result;
 }
 
-const char* SStrChrR(const char* string, char search) {
+const char* STORMAPI SStrChrR(const char* string, char search) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -279,11 +305,21 @@ const char* SStrChrR(const char* string, char search) {
     return result;
 }
 
-int32_t SStrCmp(const char* string1, const char* string2, size_t maxchars) {
+int32_t STORMAPI SStrCmp(const char* string1, const char* string2, size_t maxchars) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string1);
+    STORM_VALIDATE(string2);
+    STORM_VALIDATE_END;
+
     return strncmp(string1, string2, maxchars);
 }
 
-int32_t SStrCmpI(const char* string1, const char* string2, size_t maxchars) {
+int32_t STORMAPI SStrCmpI(const char* string1, const char* string2, size_t maxchars) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string1);
+    STORM_VALIDATE(string2);
+    STORM_VALIDATE_END;
+
 #if defined(WHOA_SYSTEM_WIN)
     return _strnicmp(string1, string2, maxchars);
 #endif
@@ -293,7 +329,7 @@ int32_t SStrCmpI(const char* string1, const char* string2, size_t maxchars) {
 #endif
 }
 
-size_t SStrCopy(char* dest, const char* source, size_t destsize) {
+size_t STORMAPI SStrCopy(char* dest, const char* source, size_t destsize) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(dest);
     STORM_VALIDATE(source);
@@ -328,22 +364,15 @@ size_t SStrCopy(char* dest, const char* source, size_t destsize) {
     return static_cast<size_t>(destbuf - dest);
 }
 
-size_t SStrNCopy(char* dest, const char* source, size_t maxchars, size_t destsize) {
-    STORM_VALIDATE_BEGIN;
-    STORM_VALIDATE(dest);
-    STORM_VALIDATE(source);
-    STORM_VALIDATE_END;
-
-    auto length = strnlen(source, maxchars);
-    if (destsize) {
-        auto count = std::min(length, destsize - 1);
-        memcpy(dest, source, count);
-        dest[count] = '\0';
-    }
-    return length;
+void STORMAPI SStrDestroy() {
+    // nothing to do
 }
 
-char* SStrDupA(const char* string, const char* filename, uint32_t linenumber) {
+char* STORMAPI SStrDupA(const char* string, const char* filename, uint32_t linenumber) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE_END;
+
     size_t len = SStrLen(string) + 1;
     char* dup = static_cast<char*>(SMemAlloc(len, filename, linenumber, 0x0));
     memcpy(dup, string, len);
@@ -351,7 +380,43 @@ char* SStrDupA(const char* string, const char* filename, uint32_t linenumber) {
     return dup;
 }
 
-uint32_t SStrHashHT(const char* string) {
+uint32_t STORMAPI SStrHash(const char* string, uint32_t flags, uint32_t seed) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE_END;
+
+    uint32_t result = seed ? seed : 0x7FED7FED;
+    uint32_t adjust = 0xEEEEEEEE;
+    uint32_t ch;
+
+    if (flags & SSTR_HASH_CASESENSITIVE) {
+        for (; *string; string++) {
+            ch = *string;
+
+            result = (s_hashtable[ch / 16] - s_hashtable[ch % 16]) ^ (adjust + result);
+            adjust = 33 * adjust + result + ch + 3;
+        }
+    }
+    else {
+        for (; *string; string++) {
+            ch = *string;
+
+            if (ch >= 'a' && ch <= 'z') {
+                ch -= 32;
+            }
+
+            if (ch == '/') {
+                ch = '\\';
+            }
+
+            result = (s_hashtable[ch / 16] - s_hashtable[ch % 16]) ^ (adjust + result);
+            adjust = 33 * adjust + result + ch + 3;
+        }
+    }
+    return result ? result : 1;
+}
+
+uint32_t STORMAPI SStrHashHT(const char* string) {
     char normalized[0x400];
     char* buf = normalized;
 
@@ -382,7 +447,51 @@ uint32_t SStrHashHT(const char* string) {
     return bjhash((uint8_t*)&normalized, length, 0);
 }
 
-size_t SStrLen(const char* string) {
+int64_t STORMAPI SStrHash64(const char* string, uint32_t flags, int64_t seed) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE_END;
+
+    int64_t result = seed ? seed : 0x7FED7FED7FED7FEDLL;
+    int64_t adjust = 0xEEEEEEEEEEEEEEEELL;
+    uint32_t ch;
+
+    if (flags & SSTR_HASH_CASESENSITIVE) {
+        for (; *string; string++) {
+            ch = static_cast<uint8_t>(*string);
+
+#if defined(WHOA_SSTRHASH64_SUBTRACTS)
+            result = (s_hashtable64[ch / 16] - s_hashtable64[ch % 16]) ^ (adjust + result);
+#else
+            result = (s_hashtable64[ch / 16] + s_hashtable64[ch % 16]) ^ (adjust + result);
+#endif
+            adjust = 33 * adjust + result + ch + 3;
+        }
+    }
+    else {
+        for (; *string; string++) {
+            ch = static_cast<uint8_t>(*string);
+
+            if (ch >= 'a' && ch <= 'z') {
+                ch -= 32;
+            }
+
+            if (ch == '/') {
+                ch = '\\';
+            }
+
+#if defined(WHOA_SSTRHASH64_SUBTRACTS)
+            result = (s_hashtable64[ch / 16] - s_hashtable64[ch % 16]) ^ (adjust + result);
+#else
+            result = (s_hashtable64[ch / 16] + s_hashtable64[ch % 16]) ^ (adjust + result);
+#endif
+            adjust = 33 * adjust + result + ch + 3;
+        }
+    }
+    return result ? result : 1LL;
+}
+
+size_t STORMAPI SStrLen(const char* string) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -395,16 +504,18 @@ size_t SStrLen(const char* string) {
     return stringEnd - string;
 }
 
-void SStrLower(char* string) {
+void STORMAPI SStrLower(char* string) {
     while (*string) {
         *string = static_cast<char>(tolower(*string));
         string++;
     }
 }
 
-uint32_t SStrPack(char* dest, const char* source, uint32_t destsize) {
-    STORM_ASSERT(dest);
-    STORM_ASSERT(source);
+uint32_t STORMAPI SStrPack(char* dest, const char* source, uint32_t destsize) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(dest);
+    STORM_VALIDATE(source);
+    STORM_VALIDATE_END;
 
     if (!destsize) {
         return 0;
@@ -445,137 +556,159 @@ uint32_t SStrPack(char* dest, const char* source, uint32_t destsize) {
     return static_cast<uint32_t>(i - dest);
 }
 
-size_t SStrPrintf(char* dest, size_t maxchars, const char* format, ...) {
+size_t STORMCDECL SStrPrintf(char* dest, size_t maxchars, const char* format, ...) {
     va_list va;
     va_start(va, format);
 
-    STORM_ASSERT(dest);
-    STORM_ASSERT(format);
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(dest);
+    STORM_VALIDATE(format);
+    STORM_VALIDATE_END;
 
-    return ISStrVPrintf(format, va, dest, maxchars);
+    return ISStrVPrintf(dest, maxchars, format, va);
 }
 
-const char* SStrStr(const char* string, const char* search) {
-    STORM_ASSERT(string);
-    STORM_ASSERT(search);
+size_t STORMCDECL SStrVPrintf(char* dest, size_t maxchars, const char* format, va_list arglist) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(dest);
+    STORM_VALIDATE(format);
+    STORM_VALIDATE_END;
 
-    if (!*string) {
-        return nullptr;
-    }
+    return ISStrVPrintf(dest, maxchars, format, arglist);
+}
 
-    auto searchEnd = search;
-    while (*searchEnd) {
-        searchEnd++;
-    }
-    size_t searchLength = searchEnd - search;
+char* STORMAPI SStrStr(char* string, const char* search) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE(search);
+    STORM_VALIDATE_END;
 
-    auto substring = string;
+    size_t searchLength = SStrLen(search);
 
-    while (SStrCmp(substring, search, searchLength)) {
-        substring++;
-
-        if (!*substring) {
-            return nullptr;
+    for (; *string; string++) {
+        if (!SStrCmp(string, search, searchLength)) {
+            return string;
         }
     }
-
-    return substring;
+    return nullptr;
 }
 
-void SStrTokenize(const char** string, char* buffer, size_t bufferchars, const char* whitespace, int32_t* quoted) {
+const char* STORMAPI SStrStr(const char* string, const char* search) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE(search);
+    STORM_VALIDATE_END;
+
+    size_t searchLength = SStrLen(search);
+
+    for (; *string; string++) {
+        if (!SStrCmp(string, search, searchLength)) {
+            return string;
+        }
+    }
+    return nullptr;
+}
+
+char* STORMAPI SStrStrI(char* string, const char* search) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE(search);
+    STORM_VALIDATE_END;
+
+    size_t searchLength = SStrLen(search);
+
+    for (; *string; string++) {
+        if (!SStrCmpI(string, search, searchLength)) {
+            return string;
+        }
+    }
+    return nullptr;
+}
+
+const char* STORMAPI SStrStrI(const char* string, const char* search) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE(search);
+    STORM_VALIDATE_END;
+
+    size_t searchLength = SStrLen(search);
+
+    for (; *string; string++) {
+        if (!SStrCmpI(string, search, searchLength)) {
+            return string;
+        }
+    }
+    return nullptr;
+}
+
+void STORMAPI SStrTokenize(const char** string, char* buffer, size_t bufferchars, const char* whitespace, int32_t* quoted) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE(*string);
-    STORM_VALIDATE(buffer || !bufferchars);
+    STORM_VALIDATE(buffer || bufferchars == 0);
     STORM_VALIDATE(whitespace);
     STORM_VALIDATE_END_VOID;
 
+    int32_t checkquotes = SStrChr(whitespace, '"') != nullptr;
+
     int32_t inquotes = 0;
     int32_t usedquotes = 0;
-    auto curstring = *string;
+    const char* currsource = *string;
 
-    auto v17 = false;
-    for (const char* w = whitespace; w && *w; w++) {
-        if (*w == '"') {
-            v17 = true;
-            break;
-        }
-    }
-
-    while (*curstring && SStrChr(whitespace, *curstring)) {
-        if (v17 && *curstring == '"') {
-            inquotes = 1;
+    while (*currsource && SStrChr(whitespace, *currsource)) {
+        if (checkquotes && *currsource == '"') {
             usedquotes = 1;
-            curstring++;
+            inquotes = 1;
+            currsource++;
 
             break;
         }
 
-        curstring++;
+        currsource++;
     }
 
-    uint32_t bufferlen = 0;
+    uint32_t destchars = 0;
 
-    if (*curstring) {
-        auto curbuffer = buffer;
-
-        while (v17 && *curstring == '"') {
-            if (bufferlen && !inquotes) {
-                goto LABEL_35;
+    while(*currsource) {
+        if (checkquotes && *currsource == '"') {
+            if (destchars && !inquotes) {
+                break;
             }
 
-            curstring++;
             usedquotes = 1;
-            inquotes = inquotes == 0;
+            inquotes = !inquotes;
+            currsource++;
 
             if (!inquotes) {
-                goto LABEL_35;
-            }
-LABEL_32:
-            if (!*curstring) {
-                goto LABEL_35;
+                break;
             }
         }
-
-        if (inquotes) {
-LABEL_29:
-            if (curbuffer - buffer < bufferchars) {
-                bufferlen++;
-                *curbuffer = *curstring;
-                curbuffer++;
+        else {
+            if (!inquotes && SStrChr(whitespace, *currsource)) {
+                currsource++;
+                break;
             }
 
-            curstring++;
-
-            goto LABEL_32;
+            if (destchars + 1 < bufferchars) {
+                buffer[destchars] = *currsource;
+                destchars++;
+            }
+            currsource++;
         }
-
-        auto v14 = SStrChr(whitespace, *curstring);
-
-        if (!v14) {
-            goto LABEL_29;
-        }
-
-        curstring++;
     }
 
-LABEL_35:
-    if (bufferlen < bufferchars) {
-        buffer[bufferlen] = 0;
+    if (destchars < bufferchars) {
+        buffer[destchars] = 0;
     }
 
-    *string = curstring;
+    *string = currsource;
 
     if (quoted) {
         *quoted = usedquotes;
     }
 }
 
-float SStrToFloat(const char* string) {
-    STORM_VALIDATE_BEGIN;
-    STORM_VALIDATE(string);
-    STORM_VALIDATE_END;
-
+static inline double ISStrToDouble(const char* string) {
     SStrInitialize();
 
     double result;
@@ -630,6 +763,7 @@ float SStrToFloat(const char* string) {
         int32_t v24 = 0;
 
         if (v23 < 10) {
+            int32_t v25 = 0;
             int32_t v26 = -1;
             double v31;
 
@@ -637,7 +771,7 @@ float SStrToFloat(const char* string) {
                 string++;
 
                 if (v24 < 20) {
-                    v31 = s_realDigit[v24][v23];
+                    v31 = s_realDigit[0][v25 + v23];
                 } else {
                     v31 = pow(v16, v26) * v23;
                 }
@@ -647,6 +781,7 @@ float SStrToFloat(const char* string) {
                 v23 = *string - '0';
                 v24++;
                 v26--;
+                v25 += 10;
             } while (v23 < 10);
         }
     }
@@ -665,10 +800,26 @@ float SStrToFloat(const char* string) {
         result = -result;
     }
 
-    return static_cast<float>(result);
+    return result;
 }
 
-int32_t SStrToInt(const char* string) {
+double STORMAPI SStrToDouble(const char* string) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE_END;
+
+    return ISStrToDouble(string);
+}
+
+float STORMAPI SStrToFloat(const char* string) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(string);
+    STORM_VALIDATE_END;
+
+    return static_cast<float>(ISStrToDouble(string));
+}
+
+int32_t STORMAPI SStrToInt(const char* string) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -694,7 +845,7 @@ int32_t SStrToInt(const char* string) {
     return result;
 }
 
-uint32_t SStrToUnsigned(const char* string) {
+uint32_t STORMAPI SStrToUnsigned(const char* string) {
     STORM_VALIDATE_BEGIN;
     STORM_VALIDATE(string);
     STORM_VALIDATE_END;
@@ -710,7 +861,7 @@ uint32_t SStrToUnsigned(const char* string) {
     return result;
 }
 
-void SStrUpper(char* string) {
+void STORMAPI SStrUpper(char* string) {
     while (*string) {
         *string = static_cast<char>(toupper(*string));
         string++;

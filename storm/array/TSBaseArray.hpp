@@ -19,6 +19,7 @@ class TSBaseArray {
 
     // Member functions
     T& operator[](uint32_t index);
+    const T& operator[](uint32_t index) const;
     void CheckArrayBounds(uint32_t index) const;
     void Constructor();
     uint32_t Count() const;
@@ -34,20 +35,27 @@ T& TSBaseArray<T>::operator[](uint32_t index) {
 }
 
 template <class T>
+const T& TSBaseArray<T>::operator[](uint32_t index) const {
+    this->CheckArrayBounds(index);
+    return this->m_data[index];
+}
+
+template <class T>
 void TSBaseArray<T>::CheckArrayBounds(uint32_t index) const {
     if (index < this->Count()) {
         return;
     }
 
     SErrDisplayErrorFmt(
-        0x85100080,
+        STORM_ERROR_ACCESS_OUT_OF_BOUNDS,
         this->MemFileName(),
         this->MemLineNo(),
         1,
         1,
         "index (0x%08X), array size (0x%08X)",
         index,
-        this->Count());
+        this->Count()
+    );
 }
 
 template <class T>

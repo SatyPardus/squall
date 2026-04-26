@@ -1,50 +1,69 @@
 #ifndef STORM_STRING_HPP
 #define STORM_STRING_HPP
 
-#include <cstdint>
+#include <cstdarg>
 #include <cstdlib>
+#include "Core.hpp"
 
 #define STORM_MAX_PATH 260
 #define STORM_MAX_STR 0x7FFFFFFF
 
-char* SStrChr(char* string, char search);
+#define SSTR_HASH_CASESENSITIVE 1
 
-const char* SStrChr(const char* string, char search);
+char* STORMAPI SStrChr(char* string, char search);
 
-char* SStrChrR(char* string, char search);
+const char* STORMAPI SStrChr(const char* string, char search);
 
-const char* SStrChrR(const char* string, char search);
+const char* STORMAPI SStrChrBidir(const char* string, char search, int32_t reverse);
 
-int32_t SStrCmp(const char* string1, const char* string2, size_t maxchars);
+char* STORMAPI SStrChrR(char* string, char search);
 
-int32_t SStrCmpI(const char* string1, const char* string2, size_t maxchars);
+const char* STORMAPI SStrChrR(const char* string, char search);
 
-size_t SStrCopy(char* dest, const char* source, size_t destsize);
+int32_t STORMAPI SStrCmp(const char* string1, const char* string2, size_t maxchars = STORM_MAX_STR);
 
-size_t SStrNCopy(char* dest, const char* source, size_t maxchars, size_t destsize);
+int32_t STORMAPI SStrCmpI(const char* string1, const char* string2, size_t maxchars = STORM_MAX_STR);
 
-char* SStrDupA(const char* string, const char* filename, uint32_t linenumber);
+size_t STORMAPI SStrCopy(char* dest, const char* source, size_t destsize = STORM_MAX_STR);
 
-uint32_t SStrHashHT(const char* string);
+void STORMAPI SStrDestroy();
 
-size_t SStrLen(const char* string);
+char* STORMAPI SStrDupA(const char* string, const char* filename, uint32_t linenumber);
 
-void SStrLower(char* string);
+uint32_t STORMAPI SStrHash(const char* string, uint32_t flags = 0, uint32_t seed = 0);
 
-uint32_t SStrPack(char* dest, const char* source, uint32_t destsize);
+uint32_t STORMAPI SStrHashHT(const char* string);
 
-size_t SStrPrintf(char* dest, size_t maxchars, const char* format, ...);
+int64_t STORMAPI SStrHash64(const char* string, uint32_t flags = 0, int64_t seed = 0);
 
-const char* SStrStr(const char* string, const char* search);
+size_t STORMAPI SStrLen(const char* string);
 
-void SStrTokenize(const char** string, char* buffer, size_t bufferchars, const char* whitespace, int32_t* quoted);
+void STORMAPI SStrLower(char* string);
 
-float SStrToFloat(const char* string);
+uint32_t STORMAPI SStrPack(char* dest, const char* source, uint32_t destsize);
 
-int32_t SStrToInt(const char* string);
+size_t STORMCDECL SStrPrintf(char* dest, size_t maxchars, const char* format, ...);
 
-uint32_t SStrToUnsigned(const char* string);
+size_t STORMCDECL SStrVPrintf(char* dest, size_t maxchars, const char* format, va_list arglist);
 
-void SStrUpper(char* string);
+char* STORMAPI SStrStr(char* string, const char* search);
+
+const char* STORMAPI SStrStr(const char* string, const char* search);
+
+char* STORMAPI SStrStrI(char* string, const char* search);
+
+const char* STORMAPI SStrStrI(const char* string, const char* search);
+
+void STORMAPI SStrTokenize(const char** string, char* buffer, size_t bufferchars, const char* whitespace, int32_t* quoted);
+
+double STORMAPI SStrToDouble(const char* string);
+
+float STORMAPI SStrToFloat(const char* string);
+
+int32_t STORMAPI SStrToInt(const char* string);
+
+uint32_t STORMAPI SStrToUnsigned(const char* string);
+
+void STORMAPI SStrUpper(char* string);
 
 #endif

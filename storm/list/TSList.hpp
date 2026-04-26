@@ -9,23 +9,32 @@
 #include <typeinfo>
 #include <new>
 
+#define STORM_LIST_LINK_AFTER   1
+#define STORM_LIST_LINK_BEFORE  2
+#define STORM_LIST_HEAD         STORM_LIST_LINK_AFTER
+#define STORM_LIST_TAIL         STORM_LIST_LINK_BEFORE
+
 #define STORM_LIST(T) TSList<T, TSGetLink<T>>
 
 template <class T, class TGetLink>
 class TSList {
     public:
     // Member variables
-    ptrdiff_t m_linkoffset = 0;
+    ptrdiff_t m_linkoffset;
     TSLink<T> m_terminator;
 
     // Member functions
     TSList();
+    TSList(const TSList& source);
     ~TSList();
     void ChangeLinkOffset(ptrdiff_t linkoffset);
     void Clear();
+    void Constructor();
+    void CopyConstructor(const TSList& source);
     T* DeleteNode(T* ptr);
     T* Head();
     void InitializeTerminator();
+    bool IsEmpty();
     bool IsLinked(T* ptr);
     TSLink<T>* Link(const T* ptr);
     void LinkNode(T* ptr, uint32_t linktype, T* existingptr);
@@ -44,7 +53,12 @@ class TSList {
 
 template <class T, class TGetLink>
 TSList<T, TGetLink>::TSList() {
-    this->InitializeTerminator();
+    this->Constructor();
+}
+
+template <class T, class TGetLink>
+TSList<T, TGetLink>::TSList(const TSList& source) {
+    this->CopyConstructor(source);
 }
 
 template <class T, class TGetLink>
@@ -70,11 +84,21 @@ void TSList<T, TGetLink>::Clear() {
 }
 
 template <class T, class TGetLink>
+void TSList<T, TGetLink>::Constructor() {
+    this->SetLinkOffset(0);
+}
+
+template <class T, class TGetLink>
+void TSList<T, TGetLink>::CopyConstructor(const TSList& source) {
+    this->SetLinkOffset(source.m_linkoffset);
+}
+
+template <class T, class TGetLink>
 T* TSList<T, TGetLink>::DeleteNode(T* ptr) {
     T* next = this->Next(ptr);
 
     ptr->~T();
-    SMemFree(ptr, __FILE__, __LINE__, 0);
+    STORM_FREE(ptr);
 
     return next;
 }
@@ -90,6 +114,11 @@ void TSList<T, TGetLink>::InitializeTerminator() {
 
     // Set sentinel node (indicates list end)
     this->m_terminator.m_next = reinterpret_cast<T*>(~reinterpret_cast<uintptr_t>(&this->m_terminator));
+}
+
+template <class T, class TGetLink>
+bool TSList<T, TGetLink>::IsEmpty() {
+    return this->Head() == nullptr;
 }
 
 template <class T, class TGetLink>
@@ -125,7 +154,7 @@ void TSList<T, TGetLink>::LinkNode(T* ptr, uint32_t linktype, T* existingptr) {
     TSLink<T>* v8;
 
     switch (linktype) {
-    case 1:
+    case STORM_LIST_LINK_AFTER:
         // After existingptr
         v5->m_prevlink = v7;
         v5->m_next = v7->m_next;
@@ -134,7 +163,7 @@ void TSList<T, TGetLink>::LinkNode(T* ptr, uint32_t linktype, T* existingptr) {
 
         break;
 
-    case 2:
+    case STORM_LIST_LINK_BEFORE:
         // Before existingptr
         v8 = v7->m_prevlink;
         v5->m_prevlink = v7->m_prevlink;
@@ -152,12 +181,12 @@ void TSList<T, TGetLink>::LinkNode(T* ptr, uint32_t linktype, T* existingptr) {
 
 template <class T, class TGetLink>
 void TSList<T, TGetLink>::LinkToHead(T* ptr) {
-    this->LinkNode(ptr, 1, nullptr);
+    this->LinkNode(ptr, STORM_LIST_HEAD, nullptr);
 }
 
 template <class T, class TGetLink>
 void TSList<T, TGetLink>::LinkToTail(T* ptr) {
-    this->LinkNode(ptr, 2, nullptr);
+    this->LinkNode(ptr, STORM_LIST_TAIL, nullptr);
 }
 
 template <class T, class TGetLink>

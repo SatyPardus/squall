@@ -7,7 +7,7 @@ file(GLOB STORM_SOURCES
     "crypto/*.cpp"
     "error/*.cpp"
     "hash/*.cpp"
-    "option*/*.cpp"
+    "option/*.cpp"
     "queue/*.cpp"
     "string/*.cpp"
     "thread/*.cpp"

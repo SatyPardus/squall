@@ -44,6 +44,7 @@ class TSHashTable {
 
     // Member functions
     uint32_t ComputeSlot(uint32_t hashval);
+    void GrowListArray(uint32_t newarraysize);
     void Initialize();
     bool Initialized();
     void InternalClear(int32_t warn);
@@ -87,6 +88,31 @@ int32_t TSHashTable<T, TKey>::GetLinkOffset() {
 }
 
 template <class T, class TKey>
+void TSHashTable<T, TKey>::GrowListArray(uint32_t newarraysize) {
+    uint32_t slotmask = this->m_slotmask + 1;
+    int32_t linkOffset = this->GetLinkOffset();
+
+    TSExplicitList<T, 0xDDDDDDDD> templist;
+    templist.ChangeLinkOffset(linkOffset);
+    for (uint32_t i = 0; i < slotmask; i++) {
+        while (T* ptr = this->m_slotlistarray[i].Head()) {
+            templist.LinkToTail(ptr);
+        }
+    }
+
+    this->m_slotlistarray.SetCount(newarraysize);
+    for (uint32_t i = 0; i < newarraysize; i++) {
+        this->m_slotlistarray[i].ChangeLinkOffset(linkOffset);
+    }
+
+    this->m_slotmask = newarraysize - 1;
+    while (T* ptr = templist.Head()) {
+        auto& slot = this->m_slotlistarray[this->ComputeSlot(ptr->m_hashval)];
+        slot.LinkToTail(ptr);
+    }
+}
+
+template <class T, class TKey>
 T* TSHashTable<T, TKey>::Head() {
     return this->m_fulllist.Head();
 }
@@ -94,17 +120,13 @@ T* TSHashTable<T, TKey>::Head() {
 template <class T, class TKey>
 void TSHashTable<T, TKey>::Initialize() {
     this->m_slotmask = 3;
-    this->m_slotlistarray.SetCount(4);
+    this->m_slotlistarray.SetCount(this->m_slotmask + 1);
 
-    int32_t linkOfs = this->GetLinkOffset();
-    uint32_t v3 = 0;
-    STORM_EXPLICIT_LIST(T, m_linktoslot)* v4;
+    auto linkOffset = this->GetLinkOffset();
 
-    do {
-        v4 = &this->m_slotlistarray[v3];
-        v4->ChangeLinkOffset(linkOfs);
-        ++v3;
-    } while (v3 < this->m_slotmask);
+    for (uint32_t slot = 0; slot <= this->m_slotmask; slot++) {
+        this->m_slotlistarray[slot].ChangeLinkOffset(linkOffset);
+    }
 }
 
 template <class T, class TKey>
@@ -141,7 +163,7 @@ void TSHashTable<T, TKey>::InternalClear(int32_t warn) {
 template <class T, class TKey>
 void TSHashTable<T, TKey>::InternalDelete(T* ptr) {
     ptr->~T();
-    SMemFree(ptr, __FILE__, __LINE__, 0x0);
+    STORM_FREE(ptr);
 }
 
 template <class T, class TKey>
@@ -187,8 +209,26 @@ T* TSHashTable<T, TKey>::InternalNewNode(uint32_t hashval, size_t extrabytes, ui
 
 template <class T, class TKey>
 int32_t TSHashTable<T, TKey>::MonitorFullness(uint32_t slot) {
-    // TODO
+    if (this->m_slotmask >= 0x1FFF) {
+        return 0;
+    }
 
+    if (this->m_fullnessIndicator > 3) {
+        this->m_fullnessIndicator -= 3;
+    }
+    else {
+        this->m_fullnessIndicator = 0;
+    }
+
+    for (T* ptr = this->m_slotlistarray[slot].Head(); reinterpret_cast<intptr_t>(ptr) > 0; ptr = this->m_slotlistarray[slot].RawNext(ptr)) {
+        this->m_fullnessIndicator++;
+        if (this->m_fullnessIndicator > 13) {
+            uint32_t grow_amt = 2 * this->m_slotmask + 2;
+            this->m_fullnessIndicator = 0;
+            this->GrowListArray(grow_amt);
+            return 1;
+        }
+    }
     return 0;
 }
 
@@ -231,32 +271,12 @@ T* TSHashTable<T, TKey>::Ptr(const char* str) {
 
     uint32_t hashval = SStrHashHT(str);
 
-    uint32_t slot = this->ComputeSlot(hashval);
-    auto slotlist = &this->m_slotlistarray[slot];
-
-    T* v7;
-
-    v7 = slotlist->Head();
-
-    if (!v7) {
-        return nullptr;
-    }
-
-    while (v7->m_hashval != hashval) {
-        uint32_t v8 = this->ComputeSlot(hashval);
-        auto v9 = &this->m_slotlistarray[v8];
-        v7 = v9->RawNext(v7);
-
-        if (reinterpret_cast<intptr_t>(v7) <= 0) {
-            return nullptr;
+    for (T* ptr = this->m_slotlistarray[this->ComputeSlot(hashval)].Head(); reinterpret_cast<intptr_t>(ptr) > 0; ptr = this->m_slotlistarray[this->ComputeSlot(hashval)].RawNext(ptr)) {
+        if (ptr->m_hashval == hashval && ptr->m_key == str) {
+            return ptr;
         }
     }
-
-    if (!(v7->m_key == str)) {
-        // TODO Handle collisions
-    }
-
-    return v7;
+    return nullptr;
 }
 
 template <class T, class TKey>
@@ -265,24 +285,12 @@ T* TSHashTable<T, TKey>::Ptr(uint32_t hashval, const TKey& key) {
         return nullptr;
     }
 
-    uint32_t slot = this->ComputeSlot(hashval);
-    auto slotlist = &this->m_slotlistarray[slot];
-
-    T* ptr = slotlist->Head();
-
-    if (!ptr) {
-        return nullptr;
-    }
-
-    while (ptr->m_hashval != hashval || !(ptr->m_key == key)) {
-        ptr = slotlist->RawNext(ptr);
-
-        if (reinterpret_cast<intptr_t>(ptr) <= 0) {
-            return nullptr;
+    for (T* ptr = this->m_slotlistarray[this->ComputeSlot(hashval)].Head(); reinterpret_cast<intptr_t>(ptr) > 0; ptr = this->m_slotlistarray[this->ComputeSlot(hashval)].RawNext(ptr)) {
+        if (ptr->m_hashval == hashval && ptr->m_key == key) {
+            return ptr;
         }
     }
-
-    return ptr;
+    return nullptr;
 }
 
 template <class T, class TKey>

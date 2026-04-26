@@ -8,9 +8,11 @@
 template <class T>
 class TSFixedArray : public TSBaseArray<T> {
     public:
+    // Member functions
     TSFixedArray();
+    TSFixedArray(const TSFixedArray& source);
     ~TSFixedArray();
-    TSFixedArray<T>& operator=(const TSFixedArray<T>& source);
+    TSFixedArray& operator=(const TSFixedArray& source);
     void Clear();
     void ReallocAndClearData(uint32_t count);
     void ReallocData(uint32_t count);
@@ -21,6 +23,12 @@ class TSFixedArray : public TSBaseArray<T> {
 template <class T>
 TSFixedArray<T>::TSFixedArray() {
     this->Constructor();
+}
+
+template <class T>
+TSFixedArray<T>::TSFixedArray(const TSFixedArray<T>& source) {
+    this->Constructor();
+    this->Set(source.Count(), source.Ptr());
 }
 
 template <class T>
@@ -41,22 +49,31 @@ TSFixedArray<T>& TSFixedArray<T>::operator=(const TSFixedArray<T>& source) {
         this->Set(source.Count(), source.Ptr());
     }
 
-  return *this;
+    return *this;
 }
 
 template <class T>
 void TSFixedArray<T>::Clear() {
-  this->~TSFixedArray<T>();
-  this->Constructor();
+    this->~TSFixedArray<T>();
+    this->Constructor();
 }
 
 template <class T>
 void TSFixedArray<T>::ReallocAndClearData(uint32_t count) {
-    this->m_alloc = count;
+    // Destruct existing array elements
+    for (uint32_t i = 0; i < this->Count(); i++) {
+        auto element = &this->operator[](i);
+        element->~T();
+    }
 
-    if (this->m_data || count) {
-        void* m = SMemReAlloc(this->m_data, sizeof(T) * count, this->MemFileName(), this->MemLineNo(), 0x0);
-        this->m_data = static_cast<T*>(m);
+    // Reallocate if count changed
+    if (count != this->m_count) {
+        this->m_alloc = count;
+
+        if (this->m_data || count) {
+            void* m = SMemReAlloc(this->m_data, sizeof(T) * count, this->MemFileName(), this->MemLineNo(), 0x0);
+            this->m_data = static_cast<T*>(m);
+        }
     }
 }
 
