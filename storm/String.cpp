@@ -7,6 +7,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 
 #if defined(WHOA_SYSTEM_WIN)
 #include <string.h>
@@ -362,6 +363,21 @@ size_t STORMAPI SStrCopy(char* dest, const char* source, size_t destsize) {
 
     *destbuf = '\0';
     return static_cast<size_t>(destbuf - dest);
+}
+
+size_t STORMAPI SStrNCopy(char* dest, const char* source, size_t maxchars, size_t destsize) {
+    STORM_VALIDATE_BEGIN;
+    STORM_VALIDATE(dest);
+    STORM_VALIDATE(source);
+    STORM_VALIDATE_END;
+
+    auto length = strnlen(source, maxchars);
+    if (destsize) {
+        auto count = std::min(length, destsize - 1);
+        memcpy(dest, source, count);
+        dest[count] = '\0';
+    }
+    return length;
 }
 
 void STORMAPI SStrDestroy() {

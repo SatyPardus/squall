@@ -25,6 +25,7 @@ int32_t STORMAPI SStrCmp(const char* string1, const char* string2, size_t maxcha
 int32_t STORMAPI SStrCmpI(const char* string1, const char* string2, size_t maxchars = STORM_MAX_STR);
 
 size_t STORMAPI SStrCopy(char* dest, const char* source, size_t destsize = STORM_MAX_STR);
+size_t STORMAPI SStrNCopy(char* dest, const char* source, size_t maxchars = STORM_MAX_STR, size_t destsize = STORM_MAX_STR);
 
 void STORMAPI SStrDestroy();
 
