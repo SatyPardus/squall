@@ -18,6 +18,7 @@ class TSBaseArray {
     virtual int32_t MemLineNo() const;
 
     // Member functions
+    ~TSBaseArray();
     T& operator[](uint32_t index);
     const T& operator[](uint32_t index) const;
     void CheckArrayBounds(uint32_t index) const;
@@ -27,6 +28,13 @@ class TSBaseArray {
     const T* Ptr() const;
     T* Top();
 };
+
+template <class T>
+TSBaseArray<T>::~TSBaseArray() {
+    this->m_alloc = 0;
+    this->m_count = 0;
+    this->m_data = nullptr;
+}
 
 template <class T>
 T& TSBaseArray<T>::operator[](uint32_t index) {

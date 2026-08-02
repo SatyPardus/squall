@@ -15,6 +15,7 @@ class TSGrowableArray : public TSFixedArray<T> {
     uint32_t m_chunk = 0;
 
     // Member functions
+    ~TSGrowableArray();
     uint32_t Add(uint32_t count, const T* data);
     uint32_t Add(uint32_t count, uint32_t incr, const T* data);
     uint32_t CalcChunkSize(uint32_t count);
@@ -25,6 +26,11 @@ class TSGrowableArray : public TSFixedArray<T> {
     uint32_t RoundToChunk(uint32_t count, uint32_t chunk);
     void SetCount(uint32_t count);
 };
+
+template <class T>
+TSGrowableArray<T>::~TSGrowableArray() {
+    m_chunk = 0;
+}
 
 template <class T>
 uint32_t TSGrowableArray<T>::Add(uint32_t count, const T* data) {
