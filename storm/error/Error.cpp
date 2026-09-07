@@ -12,7 +12,19 @@ static APPFATINFO s_appFatInfo = {};
 [[noreturn]] void SErrDisplayAppFatal(const char* format, ...) {
     // Format arguments
     constexpr size_t size = 1024;
-    char buffer[size] = {0};
+    char buffer[size] = { 0 };
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, size, format, args);
+    va_end(args);
+
+    SErrDisplayError(STORM_ERROR_APPLICATION_FATAL, s_appFatInfo.filename, s_appFatInfo.linenumber, buffer, 0, 1, 0);
+}
+
+[[noreturn]] void SErrDisplayAppFatal(uint32_t errorCode, const char* format, ...) {
+    // Format arguments
+    constexpr size_t size = 1024;
+    char buffer[size] = { 0 };
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, size, format, args);
