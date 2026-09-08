@@ -11,6 +11,7 @@ file(GLOB STORM_SOURCES
     "queue/*.cpp"
     "string/*.cpp"
     "thread/*.cpp"
+    "memblock/*.cpp"
 )
 
 if(WHOA_SYSTEM_WIN)

@@ -16,11 +16,13 @@ class TSGrowableArray : public TSFixedArray<T> {
 
     // Member functions
     ~TSGrowableArray();
+    T* Add(const T* data);
     uint32_t Add(uint32_t count, const T* data);
     uint32_t Add(uint32_t count, uint32_t incr, const T* data);
     uint32_t CalcChunkSize(uint32_t count);
     void GrowToFit(uint32_t index, int32_t zero);
     T* New();
+    T Pop();
     void Reserve(uint32_t count, int32_t round);
     uint32_t Reserved() const;
     uint32_t RoundToChunk(uint32_t count, uint32_t chunk);
@@ -43,6 +45,30 @@ uint32_t TSGrowableArray<T>::Add(uint32_t count, const T* data) {
 
     this->m_count += count;
     return this->m_count - count;
+}
+
+template <class T>
+T* TSGrowableArray<T>::Add(const T* value) {
+    this->Reserve(1, 1);
+
+    T* element = this->m_data + this->m_count;
+    this->m_count++;
+
+    if (element) {
+        *element = *value;
+    }
+
+    return element;
+}
+
+template <class T>
+T TSGrowableArray<T>::Pop() {
+    T* element = this->m_count ? &this->m_data[this->m_count - 1] : nullptr;
+    T value = *element;
+
+    this->SetCount(this->m_count - 1);
+
+    return value;
 }
 
 template <class T>
@@ -108,17 +134,19 @@ T* TSGrowableArray<T>::New() {
 template <class T>
 void TSGrowableArray<T>::Reserve(uint32_t count, int32_t round) {
     if (count + this->m_count > this->m_alloc) {
+        uint32_t total = count + this->m_count;
+
         if (round) {
             uint32_t chunk = this->m_chunk;
 
             if (!chunk) {
-                chunk = this->CalcChunkSize(count + this->m_count);
+                chunk = this->CalcChunkSize(total);
             }
 
-            count = this->RoundToChunk(count, chunk);
+            total = this->RoundToChunk(total, chunk);
         }
 
-        this->ReallocData(count + this->m_count);
+        this->ReallocData(total);
     }
 }
 
