@@ -28,6 +28,27 @@ void* HASHKEY_PTR::GetPtr() const {
     return this->m_key;
 }
 
+HASHKEY_INT::HASHKEY_INT() {
+    this->m_key = 0;
+}
+
+HASHKEY_INT::HASHKEY_INT(int32_t key) {
+    this->m_key = key;
+}
+
+HASHKEY_INT& HASHKEY_INT::operator=(const HASHKEY_INT& key) {
+    this->m_key = key.m_key;
+    return *this;
+}
+
+bool HASHKEY_INT::operator==(const HASHKEY_INT& key) const {
+    return this->m_key == key.m_key;
+}
+
+int32_t HASHKEY_INT::GetValue() const {
+    return this->m_key;
+}
+
 HASHKEY_STR::HASHKEY_STR() {
     this->m_str = nullptr;
 }

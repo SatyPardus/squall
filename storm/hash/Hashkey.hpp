@@ -1,6 +1,8 @@
 #ifndef STORM_HASH_HASHKEY_HPP
 #define STORM_HASH_HASHKEY_HPP
 
+#include <cstdint>
+
 class HASHKEY_NONE {
     public:
     // Member functions
@@ -19,6 +21,20 @@ class HASHKEY_PTR {
     private:
     // Member variables
     void* m_key;
+};
+
+class HASHKEY_INT {
+    public:
+    // Member functions
+    HASHKEY_INT();
+    HASHKEY_INT(int32_t key);
+    HASHKEY_INT& operator=(const HASHKEY_INT& key);
+    bool operator==(const HASHKEY_INT& key) const;
+    int32_t GetValue() const;
+
+    private:
+    // Member variables
+    int32_t m_key;
 };
 
 class HASHKEY_STR {
